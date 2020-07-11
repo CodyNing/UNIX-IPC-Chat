@@ -21,7 +21,9 @@ void *inputHandlerThread(void *unused)
     while (1)
     {
         char msg[MSG_MAX_LEN];
-        scanf("%s", msg);
+        fgets(msg, MSG_MAX_LEN, stdin);
+        
+        msg[strcspn(msg, "\n")] = '\0';
 
         if (!strcmp(CONTROLLER_C_TERM, msg))
         {
