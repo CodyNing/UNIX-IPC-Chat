@@ -123,7 +123,12 @@ void SyncList_free(SyncList *list)
         pthread_cond_signal(&list->buf_avil);
         pthread_cond_signal(&list->item_avil);
         List_free(list->list, SyncList_free_fn);
-        free(list);
     }
     pthread_mutex_unlock(&list->mtx);
+
+    pthread_cond_destroy(&list->item_avil);
+    pthread_cond_destroy(&list->buf_avil);
+    pthread_mutex_destroy(&list->mtx);
+    
+    free(list);
 }

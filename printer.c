@@ -13,21 +13,25 @@ static pthread_t s_threadPID;
 
 static SyncList *s_pPrintList;
 
-void* printThread(void* unused)
+static int s_status = 0;
+
+void *printThread(void *unused)
 {
-    int status = 0;
-    printf("Printing Thread initialized successfully\n");
-    Controller_threadReportInitStatus(&status);
+    puts("Printing Thread initialized successfully");
+    Controller_threadReportInitStatus(&s_status);
     while (1)
     {
         char *msg = SyncList_get(s_pPrintList);
 
         if (!msg && errno == ECANCELED)
-		{
-			break;
-		}
+        {
+            break;
+        }
 
-        printf("%s\n", msg);
+        puts(msg);
+
+        free(msg);
+        msg = NULL;
     }
     return NULL;
 }
@@ -40,6 +44,7 @@ void Printer_init(SyncList *pPrintList)
 
 void Printer_shutdown(void)
 {
+    s_status = -1;
     pthread_join(s_threadPID, NULL);
-    printf("Printing Thread shutdown successfully\n");
+    puts("Printing Thread shutdown successfully");
 }

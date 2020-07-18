@@ -11,52 +11,51 @@
 #include "controller.h"
 
 int main(int argc, char** args){
-    assert(argc = 4);
+    assert(argc == 4);
 
     char *arg_localPort = args[1];
     char *arg_remoteMacName = args[2];
     char *arg_remotePort = args[3];
 
-    int localPort = atoi(arg_localPort), initThreadCount;
+    int localPort = atoi(arg_localPort), initThreadCount = 0;
 
-    printf("s-talk initializing...\n");
+    puts("s-talk initializing...");
 
     SyncList *s_pSendList = SyncList_init(LIST_MAX_NUM_NODES / 3);
     SyncList *s_pPrintList = SyncList_init(LIST_MAX_NUM_NODES / 3);
-    SyncList *s_pThreadInitStatus = SyncList_init(CONTROL_THREAD_NUM);
 
-    Controller_init(s_pThreadInitStatus);
+    Controller_init();
 
     Printer_init(s_pPrintList);
-    Receiver_init(localPort, s_pPrintList);
     Sender_init(arg_remoteMacName, arg_remotePort, s_pSendList);
+    Receiver_init(localPort, s_pPrintList);
     InputHandler_init(s_pSendList);
 
     initThreadCount = Controller_getInitThreadCount();
 
     if(initThreadCount == CONTROL_THREAD_NUM)
     {
-        printf("Main thread is now on blocking...\n");
+        puts("Main thread is now on blocking...");
         Controller_blockMain();
     }
 
-    printf("Terminating all threads...\n");
-    SyncList_cancelBlocking(s_pThreadInitStatus);
-    SyncList_free(s_pThreadInitStatus);
+    puts("Terminating all threads...");
 
     SyncList_cancelBlocking(s_pSendList);
     SyncList_cancelBlocking(s_pPrintList);
 
-    Receiver_shutdown();
-    Printer_shutdown();
-    Sender_shutdown();
     InputHandler_shutdown();
+    Receiver_shutdown();
+    Sender_shutdown();
+    Printer_shutdown();
 
-    printf("Cleaning up all lists...\n");
+    puts("Cleaning up all lists...");
     SyncList_free(s_pSendList);
     SyncList_free(s_pPrintList);
 
-    printf("s-talk exit\n");
+    Controller_shutdown();
+    
+    puts("s-talk exit");
 
     return 0;
 }

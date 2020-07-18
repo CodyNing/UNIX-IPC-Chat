@@ -10,15 +10,16 @@
 #include "syncList.h"
 #include "controller.h"
 
-static int s_recvPort;
+static int s_recvPort, s_socketDescriptor, s_status;
 static pthread_t s_threadPID;
-static int s_socketDescriptor;
+
+static char *s_pMsg;
 
 static SyncList *s_pPrintList;
 
 void *receiveThread(void *unused)
 {
-	int status = -1;
+	s_status = -1;
 	// Address
 	struct sockaddr_in sin;
 	memset(&sin, 0, sizeof(sin));
@@ -32,7 +33,7 @@ void *receiveThread(void *unused)
 	if (s_socketDescriptor == -1)
 	{
 		fprintf(stderr, "Init receiving socket failed, error: %s\n", strerror(errno));
-		Controller_threadReportInitStatus(&status);
+		Controller_threadReportInitStatus(&s_status);
 		return NULL;
 	}
 
@@ -40,13 +41,13 @@ void *receiveThread(void *unused)
 	if (bind(s_socketDescriptor, (struct sockaddr *)&sin, sizeof(sin)) == -1)
 	{
 		fprintf(stderr, "Binding socket to port %d failed, error: %s\n", s_recvPort, strerror(errno));
-		Controller_threadReportInitStatus(&status);
+		Controller_threadReportInitStatus(&s_status);
 		return NULL;
 	}
 
-	printf("Receiving Thread initialized successfully\n");
-	status = 0;
-	Controller_threadReportInitStatus(&status);
+	puts("Receiving Thread initialized successfully");
+	s_status = 0;
+	Controller_threadReportInitStatus(&s_status);
 
 	while (1)
 	{
@@ -56,30 +57,41 @@ void *receiveThread(void *unused)
 		struct sockaddr_in sinRemote;
 		size_t byteRecv = 0;
 		unsigned int sin_len = sizeof(sinRemote);
-		char msgRx[MSG_MAX_LEN], printMsg[PRINT_MAX_LEN], remoteHostName[MSG_MAX_LEN];
+
+		s_pMsg = malloc(MSG_MAX_LEN + 1);
 
 		//max len - 1 make sure we have space left for \0
 		byteRecv = recvfrom(s_socketDescriptor,
-							msgRx, MSG_MAX_LEN - 1, 0,
+							s_pMsg, MSG_MAX_LEN, 0,
 							(struct sockaddr *)&sinRemote, &sin_len);
 
+		if (!byteRecv && s_status == -1)
+		{
+			break;
+		}
+
+		if (byteRecv == -1)
+		{	
+			fprintf(stderr, "Receiving message from port %d failed, error: %s\n", s_recvPort, strerror(errno));
+			Controller_killMain();
+			break;
+		}
 
 		//make sure recv string is null terminated.
-		msgRx[byteRecv] = '\0';
+		s_pMsg[byteRecv] = '\0';
 
-		getnameinfo((struct sockaddr *)&sinRemote, sin_len, remoteHostName, MSG_MAX_LEN, NULL, 0, 0);
+		//getnameinfo((struct sockaddr *)&sinRemote, sin_len, remoteHostName, MSG_MAX_LEN, NULL, 0, 0);
 
-		sprintf(printMsg, "from %s: %s", remoteHostName, msgRx);
-
-		if (!strcmp(CONTROLLER_C_TERM, msgRx))
+		if (!strcmp(CONTROLLER_C_TERM, s_pMsg))
 		{
 			Controller_killMain();
 		}
 
-		if (SyncList_put(s_pPrintList, printMsg) == -1 && errno == ECANCELED)
-        {
-            break;
-        }
+		if (SyncList_put(s_pPrintList, s_pMsg) == -1 && errno == ECANCELED)
+		{
+			break;
+		}
+		s_pMsg = NULL;
 	}
 
 	return NULL;
@@ -94,10 +106,15 @@ void Receiver_init(int port, SyncList *pPrintList)
 
 void Receiver_shutdown(void)
 {
+	s_status = -1;
+
 	shutdown(s_socketDescriptor, SHUT_RDWR);
 	close(s_socketDescriptor);
-	printf("Receiving socket closed\n");
+	puts("Receiving socket closed");
 
 	pthread_join(s_threadPID, NULL);
-	printf("Receiving Thread shutdown successfully\n");
+	puts("Receiving Thread shutdown successfully");
+
+	free(s_pMsg);
+	s_pMsg = NULL;
 }

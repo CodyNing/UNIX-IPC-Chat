@@ -5,14 +5,14 @@
 #include "controller.h"
 #include "syncList.h"
 
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+static SyncList *s_pThreadInitSignals;
+static SyncList *s_pThreadKillSignal;
+static int s_killSignal = CONTROL_KILL_SIGNAL;
 
-static SyncList *s_pThreadInitStatus;
-
-void Controller_init(SyncList *pStatusList)
+void Controller_init()
 {
-    s_pThreadInitStatus = pStatusList;
+    s_pThreadInitSignals = SyncList_init(CONTROL_THREAD_NUM);
+    s_pThreadKillSignal = SyncList_init(1);
 }
 
 int Controller_getInitThreadCount()
@@ -20,8 +20,8 @@ int Controller_getInitThreadCount()
     int i = 0, count = 0;
     while (i < CONTROL_THREAD_NUM)
     {
-        int *pStatusCode = SyncList_get(s_pThreadInitStatus);
-        if (*pStatusCode != -1)
+        int *pSignal = SyncList_get(s_pThreadInitSignals);
+        if (*pSignal == CONTROL_INIT_SUCCESS_SIGNAL)
         {
             ++count;
         }
@@ -32,25 +32,24 @@ int Controller_getInitThreadCount()
 
 int Controller_threadReportInitStatus(int *statusCode)
 {
-    return SyncList_put(s_pThreadInitStatus, statusCode);
+    return SyncList_put(s_pThreadInitSignals, statusCode);
 }
 
 int Controller_blockMain()
 {
-    int res;
-    pthread_mutex_lock(&mutex);
-    {
-        res = pthread_cond_wait(&cv, &mutex);
-    }
-    pthread_mutex_unlock(&mutex);
-    return res;
+    int *signal = SyncList_get(s_pThreadKillSignal);
+    return *signal;
 }
 
 int Controller_killMain()
 {
-    int res;
-    pthread_mutex_lock(&mutex);
-    res = pthread_cond_signal(&cv);
-    pthread_mutex_unlock(&mutex);
-    return res;
+    return SyncList_put(s_pThreadKillSignal, &s_killSignal);
+}
+
+void Controller_shutdown()
+{
+    SyncList_cancelBlocking(s_pThreadInitSignals);
+    SyncList_free(s_pThreadInitSignals);
+    SyncList_cancelBlocking(s_pThreadKillSignal);
+    SyncList_free(s_pThreadKillSignal);
 }

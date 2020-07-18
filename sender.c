@@ -14,13 +14,13 @@ static pthread_t s_threadPID;
 
 static char *s_recvMacName;
 static char *s_recvPort;
-static int s_socketDescriptor;
+static int s_socketDescriptor, s_status;
 
 static SyncList *s_pSendList;
 
 void *sendThread(void *unused)
 {
-    int status = -1;
+    s_status = -1;
     size_t msgLen, byteSent = 0;
     struct addrinfo hints, *remote_sin;
     memset(&hints, 0, sizeof hints);
@@ -30,7 +30,7 @@ void *sendThread(void *unused)
     if (getaddrinfo(s_recvMacName, s_recvPort, &hints, &remote_sin) == -1)
     {
         fprintf(stderr, "Getting address of remote machine failed, error: %s\n", strerror(errno));
-        Controller_threadReportInitStatus(&status);
+        Controller_threadReportInitStatus(&s_status);
         return NULL;
     }
 
@@ -39,13 +39,13 @@ void *sendThread(void *unused)
     if (s_socketDescriptor == -1)
     {
         fprintf(stderr, "initializing sending socket failed, error: %s\n", strerror(errno));
-        Controller_threadReportInitStatus(&status);
+        Controller_threadReportInitStatus(&s_status);
         return NULL;
     }
 
-    printf("Sending Thread initialized successfully\n");
-    status = 0;
-    Controller_threadReportInitStatus(&status);
+    puts("Sending Thread initialized successfully");
+    s_status = 0;
+    Controller_threadReportInitStatus(&s_status);
 
     while (1)
     {
@@ -59,17 +59,26 @@ void *sendThread(void *unused)
         //including \0
         msgLen = strlen(messageRx) + 1;
 
-        //TODO: handle send byte <= 0
         byteSent = sendto(s_socketDescriptor, messageRx, msgLen, 0, remote_sin->ai_addr, remote_sin->ai_addrlen);
+        
+        free(messageRx);
+        messageRx = NULL;
+
         if (byteSent == -1)
         {
             fprintf(stderr, "Sending message failed, error: %s\n", strerror(errno));
+            Controller_killMain();
+            break;
         }
-        else if (byteSent < msgLen)
+
+        if (byteSent < msgLen)
         {
             fprintf(stderr, "Message was not correctly sent.\n");
         }
     }
+
+    free(remote_sin);
+    remote_sin = NULL;
 
     return NULL;
 }
@@ -84,10 +93,12 @@ void Sender_init(char *macName, char *port, SyncList *pSendList)
 
 void Sender_shutdown(void)
 {
+    s_status = -1;
+    pthread_join(s_threadPID, NULL);
+
     shutdown(s_socketDescriptor, SHUT_RDWR);
     close(s_socketDescriptor);
-    printf("Sending socket closed\n");
+    puts("Sending socket closed");
+    puts("Sending Thread shutdown successfully");
 
-    pthread_join(s_threadPID, NULL);
-    printf("Sending Thread shutdown successfully\n");
 }
