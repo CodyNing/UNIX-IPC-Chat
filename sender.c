@@ -26,7 +26,7 @@ static SyncList *s_pSendList;
 void *sendThread(void *unused)
 {
     //msg len and byte sent
-    size_t msgLen, byteSent = 0;
+    size_t msgLen, byteSent = 0, errCode;
     //hint for getaddrinfo, remote addr result from getaddrinfo
     struct addrinfo hints, *remote_sin;
     //set thread init status to failed first
@@ -38,9 +38,9 @@ void *sendThread(void *unused)
 
     //get address info from using machine name and port
     //if failed, print error, report failed and end thread
-    if (getaddrinfo(s_remoteMacName, s_sendPort, &hints, &remote_sin))
+    if ((errCode = getaddrinfo(s_remoteMacName, s_sendPort, &hints, &remote_sin)))
     {
-        fprintf(stderr, "Getting address of remote machine failed, error: %s\n", strerror(errno));
+        fprintf(stderr, "Getting address of remote machine failed, error: %s\n", gai_strerror(errCode));
         Controller_threadReportInitStatus(&s_status);
         return NULL;
     }
