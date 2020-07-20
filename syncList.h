@@ -2,7 +2,6 @@
 #define _SYNCLIST_H_
 
 #define MSG_MAX_LEN 1024
-#define PRINT_MAX_LEN 4096
 
 #include <pthread.h>
 

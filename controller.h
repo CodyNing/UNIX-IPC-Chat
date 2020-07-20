@@ -10,6 +10,7 @@
 #define CONTROL_INIT_SUCCESS_SIGNAL 0
 #define CONTROL_KILL_SIGNAL 1
 
+//2 for !\0
 static const char CONTROLLER_C_TERM[2] = "!";
 
 void Controller_init();

@@ -10,6 +10,7 @@ static size_t size_remain = LIST_MAX_NUM_NODES;
 
 SyncList *SyncList_init(size_t size)
 {
+    //dynamic allocate a synclist struct and return the address
     if (size_remain < size || size == 0)
     {
         return NULL;
@@ -25,6 +26,8 @@ SyncList *SyncList_init(size_t size)
     return list;
 }
 
+//consumer and producer implementation using list
+//producer put
 int SyncList_put(SyncList *list, void *p)
 {
     if (!list)
@@ -36,6 +39,7 @@ int SyncList_put(SyncList *list, void *p)
     {
         while (List_count(list->list) == list->max_size)
         {
+            //allowing external cancel blocking
             if (list->isCanceled)
             {
                 errno = ECANCELED;
@@ -53,6 +57,8 @@ int SyncList_put(SyncList *list, void *p)
     return res;
 }
 
+//consumer and producer implementation using list
+//consumer get
 void *SyncList_get(SyncList *list)
 {
     if (!list)
@@ -64,6 +70,7 @@ void *SyncList_get(SyncList *list)
     {
         while (List_count(list->list) == 0)
         {
+            //allowing external cancel blocking
             if (list->isCanceled)
             {
                 errno = ECANCELED;
@@ -81,6 +88,10 @@ void *SyncList_get(SyncList *list)
     return res;
 }
 
+//cancel the list blocking
+//consumer and producer can still use the list when cancelled,
+//but when list is empty, get will fail by getting null ptr
+//when list is full, put will fail by getting return -1
 void SyncList_cancelBlocking(SyncList *list)
 {
     if (!list)
@@ -89,13 +100,16 @@ void SyncList_cancelBlocking(SyncList *list)
     }
     pthread_mutex_lock(&list->mtx);
     {
+        //set flag to true
         list->isCanceled = true;
+        //singal both cv
         pthread_cond_signal(&list->item_avil);
         pthread_cond_signal(&list->buf_avil);
     }
     pthread_mutex_unlock(&list->mtx);
 }
 
+//resume the blocking
 void SyncList_resumeBlocking(SyncList *list)
 {
     if (!list)
@@ -104,11 +118,13 @@ void SyncList_resumeBlocking(SyncList *list)
     }
     pthread_mutex_lock(&list->mtx);
     {
+        //set flag back to false
         list->isCanceled = false;
     }
     pthread_mutex_unlock(&list->mtx);
 }
 
+//a free function does nothing
 static void SyncList_free_fn(void *pItem) {}
 
 void SyncList_free(SyncList *list)
@@ -119,16 +135,20 @@ void SyncList_free(SyncList *list)
     }
     pthread_mutex_lock(&list->mtx);
     {
+        //cancel blocking
         list->isCanceled = true;
         pthread_cond_signal(&list->buf_avil);
         pthread_cond_signal(&list->item_avil);
+        //free the internal list
         List_free(list->list, SyncList_free_fn);
     }
     pthread_mutex_unlock(&list->mtx);
 
+    //destory all cv and mutex
     pthread_cond_destroy(&list->item_avil);
     pthread_cond_destroy(&list->buf_avil);
     pthread_mutex_destroy(&list->mtx);
     
+    //free the allocated list itself
     free(list);
 }
