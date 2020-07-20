@@ -124,11 +124,20 @@ void *receiveThread(void *unused)
 
 void Receiver_init(int port, SyncList *pPrintList)
 {
+	int errCode = 0;
 	//store port and pointer to list
 	s_recvPort = port;
 	s_pPrintList = pPrintList;
 	//create and start thread
-	pthread_create(&s_threadPID, NULL, receiveThread, NULL);
+	errCode = pthread_create(&s_threadPID, NULL, receiveThread, NULL);
+	if (errCode != 0)
+	{
+		s_status = -1;
+		//print error to stderr
+		fprintf(stderr, "Thread init failed, error: %s\n", strerror(errCode));
+		//report fail status
+		Controller_threadReportInitStatus(&s_status);
+	}
 }
 
 void Receiver_shutdown(void)

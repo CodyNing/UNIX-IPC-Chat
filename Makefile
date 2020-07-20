@@ -12,8 +12,5 @@ run: build
 valgrind: build
 	valgrind --leak-check=full --show-leak-kinds=all ./s-talk 22110 127.0.0.1 22111
 
-valgrindin: build
-	cat in.txt | valgrind --leak-check=full --show-leak-kinds=all ./s-talk 22111 127.0.0.1 22110
-
 clean:
 	rm -f s-talk

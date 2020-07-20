@@ -46,10 +46,19 @@ void *printThread(void *unused)
 
 void Printer_init(SyncList *pPrintList)
 {
+    int errCode = 0;
     //store the list pointer
     s_pPrintList = pPrintList;
     //create the start the thread
-    pthread_create(&s_threadPID, NULL, printThread, NULL);
+    errCode = pthread_create(&s_threadPID, NULL, printThread, NULL);
+    if (errCode != 0)
+	{
+		s_status = -1;
+		//print error to stderr
+		fprintf(stderr, "Thread init failed, error: %s\n", strerror(errCode));
+		//report fail status
+		Controller_threadReportInitStatus(&s_status);
+	}
 }
 
 void Printer_shutdown(void)

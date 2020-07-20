@@ -107,12 +107,21 @@ void *sendThread(void *unused)
 
 void Sender_init(char *macName, char *port, SyncList *pSendList)
 {
+    int errCode = 0;
     //store machine name, port, and pointer to sendlist
     s_remoteMacName = macName;
     s_sendPort = port;
     s_pSendList = pSendList;
     //create and start the thread
-    pthread_create(&s_threadPID, NULL, sendThread, NULL);
+    errCode = pthread_create(&s_threadPID, NULL, sendThread, NULL);
+    if (errCode != 0)
+	{
+		s_status = -1;
+		//print error to stderr
+		fprintf(stderr, "Thread init failed, error: %s\n", strerror(errCode));
+		//report fail status
+		Controller_threadReportInitStatus(&s_status);
+	}
 }
 
 void Sender_shutdown(void)

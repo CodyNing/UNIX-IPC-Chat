@@ -81,10 +81,19 @@ void *inputHandlerThread(void *unused)
 
 void InputHandler_init(SyncList *pSendList)
 {
+    int errCode = 0;
     //store the list pointer
     s_pSendList = pSendList;
     //create and start the thread
-    pthread_create(&s_threadPID, NULL, inputHandlerThread, NULL);
+    errCode = pthread_create(&s_threadPID, NULL, inputHandlerThread, NULL);
+    if (errCode != 0)
+	{
+		s_status = -1;
+		//print error to stderr
+		fprintf(stderr, "Thread init failed, error: %s\n", strerror(errCode));
+		//report fail status
+		Controller_threadReportInitStatus(&s_status);
+	}
 }
 
 void InputHandler_shutdown(void)
