@@ -24,6 +24,7 @@ int main(int argc, char** args){
     puts("s-talk initializing...");
 
     //create 2 list
+    //------------------------to TA: please do not change the LIST_MAX_NUM_NODES < 15, I need some nodes to store my signals -----------------
     SyncList *s_pSendList = SyncList_init(LIST_MAX_NUM_NODES / 3);
     SyncList *s_pPrintList = SyncList_init(LIST_MAX_NUM_NODES / 3);
 

@@ -1,7 +1,7 @@
 #ifndef _SYNCLIST_H_
 #define _SYNCLIST_H_
 
-#define MSG_MAX_LEN 1024
+#define MSG_MAX_LEN 65536
 
 #include <pthread.h>
 

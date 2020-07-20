@@ -18,7 +18,7 @@ static char *s_remoteMacName;
 //remote port
 static char *s_sendPort;
 //socket descriptor and thread status
-static int s_socketDescriptor, s_status;
+static int s_socketDescriptor = -1, s_status;
 
 //stored send list pointer
 static SyncList *s_pSendList;
@@ -78,7 +78,7 @@ void *sendThread(void *unused)
 
         //send the message using socket
         byteSent = sendto(s_socketDescriptor, messageRx, msgLen, 0, remote_sin->ai_addr, remote_sin->ai_addrlen);
-        
+
         //free the string after send
         free(messageRx);
         messageRx = NULL;
@@ -124,9 +124,19 @@ void Sender_shutdown(void)
 
     //shutdown and close the socket after thread joined
     //order is important because we want to send all the message in the list before we actually shutdown
-    shutdown(s_socketDescriptor, SHUT_RDWR);
-    close(s_socketDescriptor);
+    if(s_socketDescriptor != -1){
+        if (shutdown(s_socketDescriptor, SHUT_RDWR) == -1)
+        {
+            //don't really care if not connected, shut it down anyway
+            if(errno != ENOTCONN){
+                fprintf(stderr, "Shutting down socket failed, error: %s\n", strerror(errno));
+            }
+        }
+        if (close(s_socketDescriptor) == -1)
+        {
+            fprintf(stderr, "Closing socket failed, error: %s\n", strerror(errno));
+        }
+    }
     puts("Sending socket closed");
     puts("Sending Thread shutdown successfully");
-
 }

@@ -11,7 +11,7 @@
 #include "controller.h"
 
 //port number, socket descriptor, thread status
-static int s_recvPort, s_socketDescriptor, s_status;
+static int s_recvPort, s_socketDescriptor = -1, s_status;
 //thread pid
 static pthread_t s_threadPID;
 
@@ -137,8 +137,19 @@ void Receiver_shutdown(void)
 	s_status = -1;
 
 	//shutdown and close the socket
-	shutdown(s_socketDescriptor, SHUT_RDWR);
-	close(s_socketDescriptor);
+	if(s_socketDescriptor != -1){
+        if (shutdown(s_socketDescriptor, SHUT_RDWR) == -1)
+        {
+            //don't really care if not connected, shut it down anyway
+            if(errno != ENOTCONN){
+                fprintf(stderr, "Shutting down socket failed, error: %s\n", strerror(errno));
+            }
+        }
+        if (close(s_socketDescriptor) == -1)
+        {
+            fprintf(stderr, "Closing socket failed, error: %s\n", strerror(errno));
+        }
+    }
 	puts("Receiving socket closed");
 
 	//join thread

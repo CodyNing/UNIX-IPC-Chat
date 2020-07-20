@@ -61,16 +61,18 @@ void *inputHandlerThread(void *unused)
             {
                 break;
             }
+            //every string push successfully into the list will be free by the consumer, so set the pointer to NULL
+            s_pMsg = NULL;
 
             //use the local copy to compare with termnite char
             //shouldn't use s_pMsg because the string might have been free'd by the consumer thread
             if (!strcmp(CONTROLLER_C_TERM, localMsg))
             {
                 Controller_killMain();
+                pthread_mutex_unlock(&s_mtx);
+                break;
             }
 
-            //every string push successfully into the list will be free by the consumer, so set the pointer to NULL
-            s_pMsg = NULL;
         }
         pthread_mutex_unlock(&s_mtx);
     }
