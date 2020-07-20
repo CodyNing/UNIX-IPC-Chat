@@ -38,7 +38,7 @@ void *sendThread(void *unused)
 
     //get address info from using machine name and port
     //if failed, print error, report failed and end thread
-    if (getaddrinfo(s_remoteMacName, s_sendPort, &hints, &remote_sin) == -1)
+    if (getaddrinfo(s_remoteMacName, s_sendPort, &hints, &remote_sin))
     {
         fprintf(stderr, "Getting address of remote machine failed, error: %s\n", strerror(errno));
         Controller_threadReportInitStatus(&s_status);
